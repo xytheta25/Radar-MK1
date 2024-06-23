@@ -1,50 +1,49 @@
 import spidev
 import time
+from gpiozero import LED
 
-class SPIDriver:
-    def __init__(self, bus=0, device=0, max_speed_hz=50000, mode=0):
-        self.bus = bus
-        self.device = device
-        self.max_speed_hz = max_speed_hz
-        self.mode = mode
+# Create an SPI instance
+spi = spidev.SpiDev()
 
-        # Initialize SPI
-        self.spi = spidev.SpiDev()
-        self.spi.open(self.bus, self.device)
-        self.spi.max_speed_hz = self.max_speed_hz
-        self.spi.mode = self.mode
+# Open a connection to a specific SPI device (bus 0, device 0)
+spi.open(0, 0)
 
-    def write_data(self, data):
-        """
-        Write data to the SPI device.
-        :param data: List of bytes to send
-        """
-        self.spi.xfer2(data)
+# Set SPI speed and mode
+spi.max_speed_hz = 200000
+spi.mode = 0
 
-    def read_data(self, length):
-        """
-        Read data from the SPI device.
-        :param length: Number of bytes to read
-        :return: List of bytes read from the device
-        """
-        return self.spi.readbytes(length)
+CS_FREQ= LED(20)
+#CS_BEAM = LED(3)
+CS_FREQ.on() # set the chip select for freq synth. high (CS is active low).
+#CS_BEAM.on()
 
-    def close(self):
-        """
-        Close the SPI connection.
-        """
-        self.spi.close()
+def write_data(data):
+    """Write data to the SPI device."""
+    CS_FREQ.off() # set CS low
+    spi.xfer(data)
+    CS_FREQ.on() # set CS high again
 
-if __name__ == "__main__":
-    # Example usage
-    spi_driver = SPIDriver(bus=0, device=0, max_speed_hz=50000, mode=0)
+def read_data(length):
+    """Read data from the SPI device."""
+    return spi.readbytes(length)
 
-    # Write data to SPI device
-    spi_driver.write_data([0x01, 0x02, 0x03])
+def read_write_data(data):
+    """Write data to the SPI device and read the response."""
+    return spi.xfer2(data)
 
-    # Read data from SPI device
-    received_data = spi_driver.read_data(3)
-    print("Received data:", received_data)
+try:
+    while True:
 
-    # Close the SPI connection
-    spi_driver.close()
+        # Example read/write data (sending and receiving 3 bytes)
+        send_data1 = [0x09, 0xFF, 0x0B]
+        send_data2 = [0x09, 0xFF, 0x0B]
+        write_data(send_data1)
+        print([hex(x) for x in send_data2])
+
+        time.sleep(1)
+
+except KeyboardInterrupt:
+    pass
+
+finally:
+    spi.close()
